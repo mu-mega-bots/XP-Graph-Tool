@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>XP Graph Generator</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <h2>XP → Level algorithms</h2>
+  <form id="algoForm">
+    <div id="algos">
+      <div class="algo">
+        <input type="text" placeholder="Label" class="name" value="">
+        <input type="text" placeholder="Algorithm" class="func" value="">
+      </div>
+    </div>
+    <button type="button" id="addAlgo">Add Algorithm</button>
+    <button type="submit">Generate Graph</button>
+  </form>
+  <canvas id="xpChart" style="max-width:800px"></canvas>
+
+  <script>
+    const ctx = document.getElementById("xpChart");
+    let chart;
+
+    document.getElementById("addAlgo").addEventListener("click", () => {
+      const div = document.createElement("div");
+      div.className = "algo";
+      div.innerHTML = `
+        <input type="text" placeholder="Label" class="name">
+        <input type="text" placeholder="Algorithm" class="func">
+      `;
+      document.getElementById("algos").appendChild(div);
+    });
+
+    document.getElementById("algoForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const funcDivs = [...document.querySelectorAll(".algo")];
+      const funcs = funcDivs.map(d => ({
+        name: d.querySelector(".name").value || "Unnamed",
+        funcString: d.querySelector(".func").value
+      }));
+
+      const res = await fetch("/compute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ funcs, xpMax: 20000 })
+      });
+      const data = await res.json();
+      if (data.error) return alert("Error: " + data.error);
+
+      const colors = ["red", "blue", "green", "orange", "purple", "teal"];
+      const datasets = data.datasets.map((d, idx) => ({
+        label: d.name,
+        data: d.levels,
+        borderColor: colors[idx % colors.length],
+        fill: false,
+      }));
+
+      if (chart) chart.destroy();
+      chart = new Chart(ctx, {
+        type: "line",
+        data: { labels: data.xp, datasets },
+        options: {
+          responsive: true,
+          scales: {
+            x: { title: { display: true, text: "XP" } },
+            y: { title: { display: true, text: "Level" } }
+          }
+        }
+      });
+    });
+  </script>
+</body>
+</html>
